@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bootstrap Navbar med API-data</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .dropdown-menu {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="#">Vår anställda</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNavDropdown">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarNavDropdown">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#">Hem</a>
+                    </li>
+                    
+                    <!-- Dropdown-meny för användare -->
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="usersDropdown" role="button" data-bs-toggle="dropdown">
+                            Alla anställda
+                        </a>
+                        <ul class="dropdown-menu" id="usersDropdownMenu">
+                            <!--fylls med användare-->
+                        </ul>
+                    </li>
+                    
+                    <!-- Dropdown-meny för kön -->
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="genderDropdown" role="button" data-bs-toggle="dropdown">
+                            Kön
+                        </a>
+                        <ul class="dropdown-menu" id="genderDropdownMenu">
+                            <!--fylls med kön-->
+                        </ul>
+                    </li>
+                    
+                    <!-- Dropdown-meny för avdelningar -->
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="departmentDropdown" role="button" data-bs-toggle="dropdown">
+                            Avdelningar
+                        </a>
+                        <ul class="dropdown-menu" id="departmentDropdownMenu">
+                            <!--fyllas med unik departments-->
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <h1>Välkommen!</h1>
+        <p>Använd menyerna ovan för att filtrera användare efter:</p>
+        <ul>
+            <li><strong>Alla användare</strong> - Visa alla användare</li>
+            <li><strong>Kön</strong> - Filtrera efter man/kvinna</li>
+            <li><strong>Avdelningar</strong> - Filtrera efter arbetsavdelning</li>
+        </ul>
+    </div>
+
+    <!-- Bootstrap 5 JS Bundle med Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Vår egen JavaScript -->
+    <script src="Ex05_2_fetch_navbarmeny.js">
+        
+    </script>
+</body>
+</html>
