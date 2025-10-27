@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="sv"> <head>
+    <meta charset="UTF-8" /> <title>Användare, Inlägg & Kommentarer från API</title>
+    <style>
+        /* CSS-kod för grundläggande layout */
+        body {
+            padding: 20px; /* Lägger till utrymme runt kanten */
+            font-family: sans-serif; /* Enkelt typsnitt */
+            display: flex; /* Använd flexbox för att placera komponenterna bredvid varandra */
+            gap: 40px; /* Lägger till mellanrum mellan komponenterna */
+            flex-wrap: wrap; /* Låter komponenterna svepa till nästa rad på små skärmar */
+        }
+        /* Stilar för våra tre egna HTML-taggar */
+        user-list, user-posts, post-comments {
+            display: block; /* Se till att de beter sig som block-element */
+            max-width: 500px; /* Begränsar bredden */
+            flex: 1; /* Låter dem ta upp lika mycket utrymme */
+        }
+    </style>
+</head>
+<body>
+    <user-list></user-list> <user-posts></user-posts> <post-comments></post-comments> <script>
+        // === DEL 1: Webkomponenten för ANVÄNDARLISTAN (<user-list>) ===
+
+        // Klass för att hantera listan över användare
+        class AnvandareLista extends HTMLElement {
+            constructor() {
+                super(); // Anropar basklassen HTMLElement
+                this.attachShadow({ mode: 'open' }); // Skapar en isolerad Shadow DOM
+
+                // Laddar Shoelace och Handlebars (bibliotek) och startar datahämtning när klart
+                this.laddaBeroenden(() => this.hamtaAnvandare());
+
+                // Skapar HTML-strukturen för komponenten
+                const htmlTemplate = document.createElement('template');
+                htmlTemplate.innerHTML = `
+                    <sl-card> <h2 slot="header">Användare</h2>
+                        <sl-list id="anvandare-lista"></sl-list> 
+                        <template id="anvandare-template"> {{#each users}} 
+                            <sl-list-item data-id="{{id}}" style="cursor:pointer;"> {{firstName}} {{lastName}}<br>
+                                    {{email}} <sl-button size="small">Visa poster</sl-button>
+                                </sl-list-item>
+                                {{#unless @last}}<sl-divider></sl-divider>{{/unless}} {{/each}}
+                        </template>
+                    </sl-card>
+                `;
+                // Lägger till template i shadow DOM
+                this.shadowRoot.appendChild(htmlTemplate.content.cloneNode(true));
+            }
+
+            // connectedCallback körs när komponenten läggs till i HTML-sidan
+            connectedCallback() {
+                // Om Handlebars redan är laddat (t.ex. av loadDependencies), hämta användare direkt
+                if (window.Handlebars) this.hamtaAnvandare();
+            }
+
+            // Funktion för att ladda externa bibliotek (CSS och JS)
+            laddaBeroenden(klarCallback) {
+                // Lägg till Shoelace CSS (om den inte redan finns)
+                if (!document.querySelector('link[data-shoelace]')) {
+                    const lank = document.createElement('link');
+                    lank.rel = 'stylesheet';
+                    lank.href = 'https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.15.0/cdn/themes/light.css';
+                    lank.setAttribute('data-shoelace', 'true');
+                    document.head.appendChild(lank);
+                }
+                // Lägg till Shoelace JS (om den inte redan finns)
+                if (!document.querySelector('script[data-shoelace]')) {
+                    const script = document.createElement('script');
+                    script.type = 'module';
+                    script.src = 'https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.15.0/cdn/shoelace.js';
+                    script.setAttribute('data-shoelace', 'true');
+                    document.head.appendChild(script);
+                }
+                // Lägg till Handlebars JS (om den inte redan finns)
+                if (!window.Handlebars) {
+                    const handlebarsScript = document.createElement('script');
+                    handlebarsScript.src = 'https://cdn.jsdelivr.net/npm/handlebars@latest/dist/handlebars.min.js';
+                    handlebarsScript.onload = klarCallback; // Kör funktionen (hamtaAnvandare) när Handlebars är laddat
+                    document.head.appendChild(handlebarsScript);
+                } else {
+                    klarCallback(); // Om Handlebars redan finns, kör funktionen direkt
+                }
+            }
+
+            // Hämtar användare från DummyJSON API (asynkront)
+            async hamtaAnvandare() {
+                try {
+                    const resultat = await fetch('https://dummyjson.com/users'); // Gör HTTP-anrop
+                    const data = await resultat.json(); // Tolkar svaret som JSON
+                    this._anvandare = data.users; // Sparar användarna i klassvariabeln
+                    this.ritaUtListan(); // Anropa rendering för att visa listan
+                } catch (fel) {
+                    console.error("Fel vid hämtning av användare:", fel);
+                }
+            }
+
+            // Ritar ut användarlistan med Handlebars
+            ritaUtListan() {
+                if (!window.Handlebars || !this._anvandare) return; // Avbryt om Handlebars/data saknas
+
+                const kalla = this.shadowRoot.querySelector('#anvandare-template').innerHTML; // Hämta Handlebars-koden
+                const template = window.Handlebars.compile(kalla); // Kompilera mallen
+                const html = template({ users: this._anvandare }); // Skapa HTML från data
+                
+                const listaElement = this.shadowRoot.querySelector('#anvandare-lista'); // Hitta list-elementet
+                listaElement.innerHTML = html; // Sätt in den genererade HTML-koden
+
+                // Lägg till klickhändelse på varje användarobjekt i listan
+                listaElement.querySelectorAll('sl-list-item').forEach(item => {
+                    item.addEventListener('click', () => {
+                        const anvandarId = item.getAttribute('data-id'); // Hämta användarens ID
+                        
+                        // SKICKAR ETT CUSTOM EVENT (anpassad händelse)
+                        this.dispatchEvent(new CustomEvent('anvandare-vald', { 
+                            bubbles: true, // Låter händelsen "bubbla upp" till document-nivå
+                            detail: { anvandarId: parseInt(anvandarId) } // Skickar med ID:et
+                        }));
+                    });
+                });
+            }
+        }
+
+        // Registrerar komponenten
+        customElements.define('user-list', AnvandareLista);
+
+        // ---
+
+        // === DEL 2: Webkomponenten för Poster (<user-posts>) ===
+
+        // Klass för att visa inlägg för en vald användare
+        class AnvandareInlagg extends HTMLElement {
+            constructor() {
+                super();
+                this.attachShadow({ mode: 'open' });
+
+                // Skapar HTML-struktur för inlägg
+                const htmlTemplate = document.createElement('template');
+                htmlTemplate.innerHTML = `
+                    <sl-card>
+                        <h2 slot="header">Poster</h2>
+                        <div id="inlaggs-lista">Välj en användare för att se poster!</div> <template id="inlagg-template"> {{#each posts}}
+                                <sl-card class="inlagg-kort" data-id="{{id}}" style="margin: 1em 0; cursor:pointer;">
+                                    <h3>{{title}}</h3>
+                                    <p>{{body}}</p>
+                                    <sl-button size="small">Visa kommentarer</sl-button>
+                                </sl-card>
+                            {{/each}}
+                            {{#unless posts.length}} <p>Hittade inga poster för den valda användaren.</p>
+                            {{/unless}}
+                        </template>
+                    </sl-card>
+                `;
+                this.shadowRoot.appendChild(htmlTemplate.content.cloneNode(true));
+            }
+
+            // connectedCallback körs när komponenten läggs till i DOM
+            connectedCallback() {
+                // Lyssnar på händelsen 'anvandare-vald' från den första komponenten
+                document.addEventListener('anvandare-vald', event => {
+                    this.hamtaInlagg(event.detail.anvandarId); // Börja hämta inlägg med det valda ID:t
+                });
+            }
+
+            // Hämtar inlägg för valt användar-ID
+            async hamtaInlagg(anvandarId) {
+                try {
+                    // API-anrop med det specifika ID:t i URL:en
+                    const resultat = await fetch(`https://dummyjson.com/posts/user/${anvandarId}`); 
+                    const data = await resultat.json(); 
+                    this._inlagg = data.posts; // Sparar inläggen
+                    this.ritaUtInlagg(); // Ritar ut inläggen
+                } catch (fel) {
+                    console.error("Fel vid hämtning av inlägg:", fel);
+                }
+            }
+
+            // Ritar ut inläggslistan med Handlebars
+            ritaUtInlagg() {
+                if (!window.Handlebars) return; 
+
+                const kalla = this.shadowRoot.querySelector('#inlagg-template').innerHTML; // Hämta template-koden
+                const template = window.Handlebars.compile(kalla); // Kompilera mallen
+                const html = template({ posts: this._inlagg }); // Skapa HTML
+                
+                const behallare = this.shadowRoot.querySelector('#inlaggs-lista');
+                behallare.innerHTML = html; // Sätt in HTML
+
+                // Lägg till klickhändelse på varje inläggskort
+                behallare.querySelectorAll('.inlagg-kort').forEach(kort => {
+                    kort.addEventListener('click', () => {
+                        const inlaggId = kort.getAttribute('data-id'); // Hämta inläggets ID
+                        
+                        // SKICKAR ETT CUSTOM EVENT
+                        this.dispatchEvent(new CustomEvent('inlagg-valt', {
+                            bubbles: true,
+                            detail: { inlaggId: parseInt(inlaggId) } // Skickar med inläggets ID
+                        }));
+                    });
+                });
+            }
+        }
+
+        // Registrerar komponenten
+        customElements.define('user-posts', AnvandareInlagg);
+
+        // ---
+
+        // === DEL 3: Webkomponenten för KOMMENTARER (<post-comments>) ===
+
+        // Klass för att visa kommentarer för ett valt inlägg
+        class InlaggKommentarer extends HTMLElement {
+            constructor() {
+                super();
+                this.attachShadow({ mode: 'open' });
+
+                // Skapar HTML-struktur för kommentarer
+                const htmlTemplate = document.createElement('template');
+                htmlTemplate.innerHTML = `
+                    <sl-card>
+                        <h2 slot="header">Kommentarer</h2>
+                        <div id="kommentar-lista">Välj ett inlägg för att se kommentarer!</div> <template id="kommentar-template"> {{#each comments}}
+                                <sl-alert open variant="primary" style="margin: 0.5em 0;"> <strong>{{user.username}}</strong>: {{body}} </sl-alert>
+                            {{/each}}
+                            {{#unless comments.length}}
+                                <p>Inga kommentarer hittades för detta inlägg.</p>
+                            {{/unless}}
+                        </template>
+                    </sl-card>
+                `;
+                this.shadowRoot.appendChild(htmlTemplate.content.cloneNode(true));
+            }
+
+            // connectedCallback körs när komponenten läggs till i DOM
+            connectedCallback() {
+                // Lyssnar på händelsen 'inlagg-valt' från den andra komponenten
+                document.addEventListener('inlagg-valt', event => {
+                    this.hamtaKommentarer(event.detail.inlaggId); // Börja hämta kommentarer med det valda ID:t
+                });
+            }
+
+            // Hämtar kommentarer för valt inläggs-ID
+            async hamtaKommentarer(inlaggId) {
+                try {
+                    // API-anrop med det specifika inläggs-ID:t
+                    const resultat = await fetch(`https://dummyjson.com/comments/post/${inlaggId}`);
+                    const data = await resultat.json();
+                    this._kommentarer = data.comments; // Sparar kommentarerna
+                    this.ritaUtKommentarer(); // Ritar ut kommentarerna
+                } catch (fel) {
+                    console.error("Fel vid hämtning av kommentarer:", fel);
+                }
+            }
+
+            // Ritar ut kommentarerna med Handlebars
+            ritaUtKommentarer() {
+                if (!window.Handlebars) return; 
+
+                const kalla = this.shadowRoot.querySelector('#kommentar-template').innerHTML; // Hämta template-koden
+                const template = window.Handlebars.compile(kalla); // Kompilera mallen
+                const html = template({ comments: this._kommentarer }); // Skapa HTML
+                
+                // Sätter in den genererade HTML-koden i behållaren
+                this.shadowRoot.querySelector('#kommentar-lista').innerHTML = html;
+            }
+        }
+
+        // Registrerar komponenten
+        customElements.define('post-comments', InlaggKommentarer);
+    </script>
+</body>
+</html>

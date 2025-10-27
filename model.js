@@ -13,7 +13,7 @@ export class model {
         }
     }
 
-    async fetchProducts() {
+    async fetchAllProducts() {
         try {
             const response = await fetch('https://fakestoreapi.com/products');
             const data = await response.json();
@@ -21,6 +21,25 @@ export class model {
         }
         catch (error) {
             console.error('Error fetching products:', error);
+            return [];
+        }
+    }
+
+    async fetchProductsByCategory(cat) {
+        try {
+            const response = await fetch(`https://fakestoreapi.com/products`);
+            const data = await response.json();
+            const filteredProducts = [];
+            data.forEach(product => {
+                if (product.category === cat) {
+                    // https://www.w3schools.com/js/js_array_methods.asp
+                    filteredProducts.push(product);
+                }
+            });
+            return filteredProducts;
+        }
+        catch (error) {
+            console.error('Error fetching products by category:', error);
             return [];
         }
     }
